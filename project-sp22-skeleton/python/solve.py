@@ -13,6 +13,8 @@ from instance import Instance
 from solution import Solution
 from file_wrappers import StdinFileWrapper, StdoutFileWrapper
 
+from solve_juno import solve_j
+from solve_juno2 import solve_j2
 
 def solve_naive(instance: Instance) -> Solution:
     return Solution(
@@ -22,7 +24,9 @@ def solve_naive(instance: Instance) -> Solution:
 
 
 SOLVERS: Dict[str, Callable[[Instance], Solution]] = {
-    "naive": solve_naive
+    "naive": solve_naive,
+    "juno": solve_j,
+    "juno2": solve_j2
 }
 
 
