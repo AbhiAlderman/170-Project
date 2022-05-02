@@ -116,17 +116,29 @@ def findGreedyTower(cities, towers, penalty_radius):
                 if min penalty, replace towerMP and maybe towerP
             
     """
-    #needed variables
+    #best tower regardless of penalty
+    towerP = Point(None, None)
+
+    #best tower of lowest penalty
+    towerMP = Point(None, None)
+
+    #how much each tower covers
     towerPCoverage = 0
     towerMPCoverage = 0
+
+    #the current smallest penalty
     currentMinPenalty = 205
 
-    towerP = Point
-    towerMP = Point
+    #list of towers with lowest penalty
+    #[[cities covered, tower point, list of cities covered]]
+    minPenaltyTowers = [[None, None, None]]
+
+    #list of cities covered by towerP and towerMP
+    towerPCities = []
+    towerMPCities = []
 
     #get list of possible towers
     possibleTowers = getPointsInRadius(cities, penalty_radius)
-    
     #each element is (x, y) not a point
     for coordinate in possibleTowers:
         #make the element a point
@@ -134,39 +146,82 @@ def findGreedyTower(cities, towers, penalty_radius):
         #check if point is already a tower
         if newTower in towers:
             continue
+        
         #get all points within radius of this tower
         towerRadius = getPointsInRadius([newTower], penalty_radius)
+        
+        #keep track of the current penalty and coverage of tower
         currentTowerCoverage = 0
         currentTowerPenalty = 0
+
+        #keep track of cities within tower radius
+        currentCitiesCovered = []
         #for each point, check if it is a tower or city
         for possibleCoordinate in towerRadius:
             currentPoint = Point(possibleCoordinate[0], possibleCoordinate[1])
             #if a city, add 1 to current coverage
-            if currentPoint in cities:
+            if currentPoint in cities and currentPoint.distance_sq(newTower) <= 9:
                 currentTowerCoverage += 1
+                currentCitiesCovered.append(currentPoint)
             #if a tower, add 1 to current penalty
             if currentPoint in towers:
                 currentTowerPenalty += 1
         #now that we know this points coverage and penalty, check if its the best so far
-        #if best coverage overall, replace towerP
+
+        #if this tower doesnt cover any cities, we dont care about it
+        if currentTowerCoverage == 0:
+            continue
+
+        #if covers more cities than our max, make our max
         if currentTowerCoverage > towerPCoverage:
             towerPCoverage = currentTowerCoverage
             towerP = newTower
-        #if better than towerNP AND smaller than or equal penalty, replace towerMP
-        if currentTowerCoverage > towerMPCoverage and currentTowerPenalty <= currentMinPenalty:
+            towerPCities = currentCitiesCovered
+        
+        if currentTowerPenalty > currentMinPenalty:
+            continue
+        #if covers same cities for same min penalty, add to list
+        if currentTowerPenalty == currentMinPenalty and currentTowerCoverage == towerMPCoverage:
+            minPenaltyTowers.append([currentTowerCoverage, newTower, currentCitiesCovered])
+
+        #if covers more cities for same min penalty, make new list
+        if currentTowerPenalty == currentMinPenalty and currentTowerCoverage > towerMPCoverage:
+            minPenaltyTowers.clear()
+            minPenaltyTowers.append([currentTowerCoverage, newTower, currentCitiesCovered])
+            towerMPCoverage = currentTowerCoverage
+        #if has lower min penalty, make new list
+        if currentTowerPenalty < currentMinPenalty:
+            minPenaltyTowers.clear()
+            minPenaltyTowers.append([currentTowerCoverage, newTower, currentCitiesCovered])
             towerMPCoverage = currentTowerCoverage
             currentMinPenalty = currentTowerPenalty
-            towerMP = newTower
+    
+    #get the best tower from the min penalty towers
+    towerMPCoverage = 0
+    minTowerCoverage = 0
+    minTowerPoint = Point
+    for i in range(len(minPenaltyTowers)):
+        minTower = minPenaltyTowers[i]
+        minTowerCoverage = minTower[0]
+        minTowerPoint = minTower[1]
+        minTowerList = minTower[2]
+        if minTowerCoverage > towerMPCoverage:
+            towerMPCoverage = minTowerCoverage
+            towerMP = minTowerPoint
+            towerMPCities = minTowerList
+    towersList = [[towerP, towerPCities], [towerMP, towerMPCities]]
+    return towersList
+
+    """
+    print everything!
+    return a list of cities that are now gonna be covered as well
     print("TowerP Coverage: " + str(towerPCoverage))
     print("TowerMP Coverage: " + str(towerMPCoverage))
     print("Current Min Penalty: " + str(currentMinPenalty))
     print("TowerP: " + str(towerP))
     print("TowerMP: " + str(towerMP))
-    towersList = [towerP, towerMP]
-    return towersList
-
-    """
-    print everything!
+    cities = [Point(0, 2), Point(1, 2), Point(2, 2), Point(3, 2), Point(4, 2), Point(2, 0), Point(2, 1), Point(2, 3), Point(2, 4), 
+    Point(29, 27), Point(28, 27), Point(26, 27), Point(25, 27), Point(27, 25), Point(27, 26), Point(27, 28), Point(27, 29)]
     """
 
 def findPenalty(towers, penalty_radius):
@@ -189,11 +244,12 @@ def findPenalty(towers, penalty_radius):
 
 def getPointsInRadius(points, radius):
     if radius == 8:
-        return getPointsInRadiusSP(cities)
+        return getPointsInRadiusSP(points)
     elif radius == 10:
-        return getPointsInRadiusMP(cities)
+        return getPointsInRadiusMP(points)
     else:
-        return getPointsInRadiusLP(cities)
+        return getPointsInRadiusLP(points)
+
 
 def getPointsInRadiusSP(cities):
     """
