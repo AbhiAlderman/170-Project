@@ -20,6 +20,7 @@ from solution import Solution
 # Modify this line to import your own solvers.
 # YOUR CODE HERE
 from solve import solve_naive
+from solve_abhi import solve_dp, solve_dp_small, solve_dp_medium, solve_dp_big
 
 
 class Size(enum.Enum):
@@ -32,11 +33,11 @@ def solver(size: Size, instance: Instance) -> Solution:
     # Modify this function to use your imported solvers.
     # YOUR CODE HERE
     if size == Size.SMALL:
-        return solve_naive(instance)
+        return solve_dp_small(instance)
     elif size == Size.MEDIUM:
-        return solve_naive(instance)
+        return solve_dp_medium(instance)
     elif size == Size.LARGE:
-        return solve_naive(instance)
+        return solve_dp_big(instance)
 
 
 # You shouldn't need to modify anything below this line.

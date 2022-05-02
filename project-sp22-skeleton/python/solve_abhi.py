@@ -6,9 +6,11 @@ For usage, run `python3 solve.py --help`.
 """
 
 import argparse
+from ast import List
 import math
 
 from pathlib import Path
+from tkinter import N
 from typing import Callable, Dict
 
 from instance import Instance
@@ -56,7 +58,15 @@ HELPER FUNCTIONS:
     findPenalty = finds the current penalty given current towers and penalty radius
 
 """
-def solve_dp(instance: Instance) -> Solution:
+def solve_dp_small(instance: Instance) -> Solution:
+    return solve_dp(instance, 8)
+def solve_dp_medium(instance: Instance) -> Solution:
+    return solve_dp(instance, 10)
+def solve_dp_big(instance: Instance) -> Solution:
+    return solve_dp(instance, 14)
+    
+
+def solve_dp(instance: Instance, penalty_radius) -> Solution:
     """
     DP approach:
     get list of cities
@@ -76,14 +86,22 @@ def solve_dp(instance: Instance) -> Solution:
         if it doesnt work
     """
     cities = instance.cities
-    solution = recursiveHelper(cities) #solution = [penalty, tower list]
-    return Solution(
-        instance=instance,
-        towers=solution[1],
-    )
+    #solution = recursiveHelper(cities, [], penalty_radius) #solution = [penalty, tower list]
+    solution = justGreedyRecursive(cities, [], penalty_radius)
+    return Solution(solution, instance)
+
+def justGreedyRecursive(cities: List, towers: List, penalty_radius: int):
+    if not cities:
+        return towers
+    greedySolution = findGreedyTowers(cities, towers, penalty_radius)
+    penaltyTower = greedySolution[0][0]
+    penaltyTowerCities = greedySolution[0][1]
+    newCities = [city for city in cities if city not in penaltyTowerCities]
+    towers.append(penaltyTower)
+    return justGreedyRecursive(newCities, towers, penalty_radius)
 
 
-def recursiveHelper(cities, towers, penalty_radius):
+def recursiveHelper(cities: List, towers: List, penalty_radius: int):
     """
     if there are no cities left then just return the current penalty
     next, find greedy tower aka tower that covers the most
@@ -92,13 +110,38 @@ def recursiveHelper(cities, towers, penalty_radius):
     #case where there are no cities left
     if not cities:
         return [findPenalty(towers, penalty_radius), towers]
-    
-    return None
+    towersList = findGreedyTowers(cities, towers, penalty_radius)
+    penaltyTower = towersList[0][0]
+    penaltyTowerCities = towersList[0][1]
+    lowPenaltyTower = towersList[1][0]
+    lowPenaltyTowerCities = towersList[1][1]
+    if penaltyTower == lowPenaltyTower:
+        newCities = [city for city in cities if city not in penaltyTowerCities]
+        towers.append(penaltyTower)
+        return recursiveHelper(newCities, towers, penalty_radius)
+    else:
+        highPenaltyCities = [city for city in cities if city not in penaltyTowerCities]
+        lowPenaltyCities = [city for city in cities if city not in lowPenaltyTowerCities]
+        highPenaltyTowers = towers
+        highPenaltyTowers.append(penaltyTower)
+        lowPenaltyTowers = towers
+        lowPenaltyTowers.append(lowPenaltyTower)
+        greedyPath = recursiveHelper(highPenaltyCities, highPenaltyTowers, penalty_radius)
+        lowPenaltyPath = recursiveHelper(lowPenaltyCities, lowPenaltyTowers, penalty_radius)
+        greedyPathCost = greedyPath[0]
+        lowPenaltyPathCost = lowPenaltyPath[0]
+        if greedyPathCost <= lowPenaltyPathCost:
+            print("Next choice is greedy because " + str(greedyPathCost) + " <= " + str(lowPenaltyPathCost))
+            return greedyPath
+        else:
+            print("Next choice is kind")
+            return lowPenaltyPath 
 
     #return list(penalty, tower list)
     
 
-def findGreedyTower(cities, towers, penalty_radius):
+#returns [[greedy tower w/ penalty, [cities covered by this tower]], [greedy tower w/ min penalty, [cities covered by this tower]]]
+def findGreedyTowers(cities: List, towers: List, penalty_radius: int):
     """
     find the next tower that covers the most cities
     returns a [towerP, towerMP]
@@ -138,17 +181,16 @@ def findGreedyTower(cities, towers, penalty_radius):
     towerMPCities = []
 
     #get list of possible towers
-    possibleTowers = getPointsInRadius(cities, penalty_radius)
+    possibleTowers = getPossibleTowers(cities, penalty_radius)
     #each element is (x, y) not a point
-    for coordinate in possibleTowers:
+    for newTower in possibleTowers:
         #make the element a point
-        newTower = Point(coordinate[0], coordinate[1])
         #check if point is already a tower
         if newTower in towers:
             continue
         
         #get all points within radius of this tower
-        towerRadius = getPointsInRadius([newTower], penalty_radius)
+        towerRadius = getPenaltyRadius(newTower, penalty_radius)
         
         #keep track of the current penalty and coverage of tower
         currentTowerCoverage = 0
@@ -183,18 +225,21 @@ def findGreedyTower(cities, towers, penalty_radius):
         #if covers same cities for same min penalty, add to list
         if currentTowerPenalty == currentMinPenalty and currentTowerCoverage == towerMPCoverage:
             minPenaltyTowers.append([currentTowerCoverage, newTower, currentCitiesCovered])
+            
 
         #if covers more cities for same min penalty, make new list
         if currentTowerPenalty == currentMinPenalty and currentTowerCoverage > towerMPCoverage:
             minPenaltyTowers.clear()
             minPenaltyTowers.append([currentTowerCoverage, newTower, currentCitiesCovered])
             towerMPCoverage = currentTowerCoverage
+            
         #if has lower min penalty, make new list
         if currentTowerPenalty < currentMinPenalty:
             minPenaltyTowers.clear()
             minPenaltyTowers.append([currentTowerCoverage, newTower, currentCitiesCovered])
             towerMPCoverage = currentTowerCoverage
             currentMinPenalty = currentTowerPenalty
+            
     
     #get the best tower from the min penalty towers
     towerMPCoverage = 0
@@ -205,10 +250,16 @@ def findGreedyTower(cities, towers, penalty_radius):
         minTowerCoverage = minTower[0]
         minTowerPoint = minTower[1]
         minTowerList = minTower[2]
+        if minTowerCoverage is None:
+            continue
         if minTowerCoverage > towerMPCoverage:
             towerMPCoverage = minTowerCoverage
             towerMP = minTowerPoint
             towerMPCities = minTowerList
+    if towerMP == Point(None, None):
+        
+        towerMP = towerP
+        towerMPCities = towerPCities
     towersList = [[towerP, towerPCities], [towerMP, towerMPCities]]
     return towersList
 
@@ -224,7 +275,7 @@ def findGreedyTower(cities, towers, penalty_radius):
     Point(29, 27), Point(28, 27), Point(26, 27), Point(25, 27), Point(27, 25), Point(27, 26), Point(27, 28), Point(27, 29)]
     """
 
-def findPenalty(towers, penalty_radius):
+def findPenalty(towers: List, penalty_radius: int):
     """
     This function finds the penalty with current towers
     does NOT check if towers are valid
@@ -242,75 +293,61 @@ def findPenalty(towers, penalty_radius):
         total += 170 * math.exp(0.17 * wj)
     return total
 
-def getPointsInRadius(points, radius):
+#get list of possible coordinates within penalty radius of tower
+def getPenaltyRadius(tower: Point, radius: int):
     if radius == 8:
-        return getPointsInRadiusSP(points)
+        return sp[tower.x, tower.y]
     elif radius == 10:
-        return getPointsInRadiusMP(points)
+        return mp[tower.x, tower.y]
     else:
-        return getPointsInRadiusLP(points)
+        return lp[tower.x, tower.y]
 
+#get list of possible coordinates within service of cities
+def getPossibleTowers(cities: List, radius: int):
+    if radius == 8:
+        return getPossibleTowersHelperSS(cities)
+    elif radius == 10:
+        return getPossibleTowersHelperMS(cities)
+    else:
+        return getPossibleTowersHelperLS(cities)
 
-def getPointsInRadiusSP(cities):
-    """
-    return the list of possible towers given the penalty radius
-
-    make a list of possible towers
-    for each city:
-        run sp/mp/lp on the city to get radius list
-        for each point in the radius, add to list
-        if already in list dont add
-    """
+def getPossibleTowersHelperSS(cities: List):
     possibleTowers = []
-    for i in range(len(cities)):
-        currentCity = cities[i]
-        cityRadius = sp[currentCity.x, currentCity.y]
-        for coordinate in cityRadius:
-            if coordinate not in possibleTowers:
-                possibleTowers.append(coordinate)
+    for city in cities:
+        radiusCoordinates = ss[city.x, city.y]
+        for coordinate in radiusCoordinates:
+            newPoint = Point(coordinate[0], coordinate[1])
+            if newPoint not in possibleTowers:
+                possibleTowers.append(newPoint)
     return possibleTowers
 
-def getPointsInRadiusMP(cities):
-    """
-    return the list of possible towers given the penalty radius
-
-    make a list of possible towers
-    for each city:
-        run sp/mp/lp on the city to get radius list
-        for each point in the radius, add to list
-        if already in list dont add
-    """
+def getPossibleTowersHelperMS(cities: List):
     possibleTowers = []
-    for i in range(len(cities)):
-        currentCity = cities[i]
-        cityRadius = mp[currentCity.x, currentCity.y]
-        for coordinate in cityRadius:
-            if coordinate not in possibleTowers:
-                possibleTowers.append(coordinate)
+    for city in cities:
+        radiusCoordinates = ms[city.x, city.y]
+        for coordinate in radiusCoordinates:
+            newPoint = Point(coordinate[0], coordinate[1])
+            if newPoint not in possibleTowers:
+                possibleTowers.append(newPoint)
     return possibleTowers
 
-def getPointsInRadiusLP(cities):
-    """
-    return the list of possible towers given the penalty radius
-
-    make a list of possible towers
-    for each city:
-        run sp/mp/lp on the city to get radius list
-        for each point in the radius, add to list
-        if already in list dont add
-    """
+def getPossibleTowersHelperLS(cities: List):
     possibleTowers = []
-    for i in range(len(cities)):
-        currentCity = cities[i]
-        cityRadius = lp[currentCity.x, currentCity.y]
-        for coordinate in cityRadius:
-            if coordinate not in possibleTowers:
-                possibleTowers.append(coordinate)
+    for city in cities:
+        radiusCoordinates = ls[city.x, city.y]
+        for coordinate in radiusCoordinates:
+            newPoint = Point(coordinate[0], coordinate[1])
+            if newPoint not in possibleTowers:
+                possibleTowers.append(newPoint)
     return possibleTowers
 
 SOLVERS: Dict[str, Callable[[Instance], Solution]] = {
-    "naive": solve_naive
+    "naive": solve_naive,
+    "solve_dp_small": solve_dp_small,
+    "solve_dp_medium": solve_dp_medium,
+    "solve_dp_big": solve_dp_big 
 }
+
 
 
 # You shouldn't need to modify anything below this line.
