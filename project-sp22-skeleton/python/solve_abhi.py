@@ -87,8 +87,9 @@ def solve_dp(instance: Instance, penalty_radius) -> Solution:
     """
     cities = instance.cities
     #solution = recursiveHelper(cities, [], penalty_radius) #solution = [penalty, tower list]
-    solution = justGreedyRecursive(cities, [], penalty_radius)
-    return Solution(solution, instance)
+    solution = recursiveHelper(cities, [], penalty_radius)
+    towers = solution[1]
+    return Solution(towers, instance)
 
 def justGreedyRecursive(cities: List, towers: List, penalty_radius: int):
     if not cities:
@@ -271,8 +272,7 @@ def findGreedyTowers(cities: List, towers: List, penalty_radius: int):
     print("Current Min Penalty: " + str(currentMinPenalty))
     print("TowerP: " + str(towerP))
     print("TowerMP: " + str(towerMP))
-    cities = [Point(0, 2), Point(1, 2), Point(2, 2), Point(3, 2), Point(4, 2), Point(2, 0), Point(2, 1), Point(2, 3), Point(2, 4), 
-    Point(29, 27), Point(28, 27), Point(26, 27), Point(25, 27), Point(27, 25), Point(27, 26), Point(27, 28), Point(27, 29)]
+    cities = [Point(0, 2), Point(1, 2), Point(2, 2), Point(3, 2), Point(4, 2), Point(2, 0), Point(2, 1), Point(2, 3), Point(2, 4), Point(29, 27), Point(28, 27), Point(26, 27), Point(25, 27), Point(27, 25), Point(27, 26), Point(27, 28), Point(27, 29)]
     """
 
 def findPenalty(towers: List, penalty_radius: int):
